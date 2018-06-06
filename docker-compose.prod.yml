@@ -1,0 +1,42 @@
+version: '2'
+
+services:
+  app:
+    command: run start
+    environment:
+      - CONFIG_WEB_USERNAME=admin
+      - CONFIG_WEB_PASSWORD=Tinhte.vn2016
+      - PORT=80
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+    restart: unless-stopped
+
+  caddy:
+    image: abiosoft/caddy:0.11.0
+    links:
+      - app
+    volumes:
+      - ./docker/Caddyfile:/etc/Caddyfile:ro
+      - ./docker/data/caddy:/root/.caddy
+    ports:
+      - "80:80"
+      - "443:443"
+
+  mongo:
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+    restart: unless-stopped
+
+  redis:
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+    restart: unless-stopped
