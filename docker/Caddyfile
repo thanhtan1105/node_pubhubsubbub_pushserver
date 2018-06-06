@@ -6,6 +6,11 @@ push.appforo.com
 errors stdout
 log stdout
 
+basicauth /admin/db admin Tinhte.vn2016
+proxy /admin/db adminmongo:80 {
+  transparent
+}
+
 proxy / app:80 {
   transparent
 }

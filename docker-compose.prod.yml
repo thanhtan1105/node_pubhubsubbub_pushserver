@@ -1,6 +1,16 @@
 version: '2'
 
 services:
+  adminmongo:
+    environment:
+      - PORT=80
+    logging:
+      driver: json-file
+      options:
+        max-size: 100m
+        max-file: "3"
+    restart: unless-stopped
+
   app:
     command: run start
     environment:
@@ -20,6 +30,7 @@ services:
     environment:
       - ACME_AGREE=true
     links:
+      - adminmongo
       - app
     volumes:
       - ./docker/Caddyfile:/etc/Caddyfile:ro
