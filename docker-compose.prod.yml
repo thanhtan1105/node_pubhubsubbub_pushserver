@@ -4,6 +4,7 @@ services:
   app:
     command: run start
     environment:
+      - CONFIG_WEB_CALLBACK=http://45.55.91.220
       - CONFIG_WEB_USERNAME=admin
       - CONFIG_WEB_PASSWORD=Tinhte.vn2016
       - PORT=80
@@ -16,6 +17,8 @@ services:
 
   caddy:
     image: abiosoft/caddy:0.11.0
+    environment:
+      - ACME_AGREE=true
     links:
       - app
     volumes:
