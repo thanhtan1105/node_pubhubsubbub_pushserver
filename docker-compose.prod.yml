@@ -17,6 +17,7 @@ services:
       - CONFIG_WEB_CALLBACK=http://45.55.91.220
       - CONFIG_WEB_USERNAME=admin
       - CONFIG_WEB_PASSWORD=Tinhte.vn2016
+      - NODE_ENV=production
       - PORT=80
     logging:
       driver: json-file
