@@ -1,7 +1,8 @@
 http://127.0.0.1,
 http://pushserver.local.xfrocks.com,
 http://45.55.91.220,
-push.appforo.com
+http://push.appforo.com,
+https://push.appforo.com
 
 errors stdout
 log stdout
