@@ -78,4 +78,19 @@ Project configuration at `/admin/projects/wns`, parameters:
  * `extra_data[package]` = Package ID
  * `extra_data[channel_uri]` = Channel URI
 
+# push.appforo.com
+
+## Connect to server
+
+```bash
+ssh appforo@push.appforo.com
+```
+
+## View app log
+
+```bash
+docker logs --tail 10 -f pushappforocom_app_1
+```
+
+
  
