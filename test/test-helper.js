@@ -30,9 +30,24 @@ describe('helper', function () {
       expect(f(null)).to.be.null
       expect(f({})).to.be.null
 
-      expect(f({ notification_html: '' })).to.be.null
+      expect(f({
+        notification_id: 0,
+        notification_html: 'text'
+      })).to.be.null
+
+      expect(f({
+        notification_id: 1,
+        notification_html: ''
+      })).to.be.null
 
       done()
+    })
+
+    it('should not prepare (invalid notification html)', () => {
+      expect(f({
+        notification_id: 1,
+        notification_html: '<br />'
+      })).to.be.null
     })
 
     it('should prepare alert (notification)', (done) => {
@@ -167,16 +182,16 @@ describe('helper', function () {
       f({
         notification_id: 0,
         notification_html: '',
+        creator_username: 'foo',
         message: {
           conversation_id: 1,
-          creator_username: 'foo',
           message: 'hello world',
           title: 'convo title'
         }
       }).should.deep.equal({
         data: {
+          'creator_username': 'foo',
           'message.conversation_id': '1',
-          'message.creator_username': 'foo',
           'message.message': 'hello world',
           'message.title': 'convo title'
         }
@@ -255,9 +270,9 @@ describe('helper', function () {
       f({
         notification_id: 0,
         notification_html: '',
+        creator_username: 'foo',
         message: {
           conversation_id: 1,
-          creator_username: 'foo',
           message: 'hello world',
           title: 'convo title'
         }
@@ -267,8 +282,8 @@ describe('helper', function () {
           title: 'convo title'
         },
         data: {
+          'creator_username': 'foo',
           'message.conversation_id': '1',
-          'message.creator_username': 'foo',
           'message.message': 'hello world',
           'message.title': 'convo title'
         }
