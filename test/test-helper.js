@@ -180,6 +180,14 @@ describe('helper', function () {
       })
 
       f({
+        user_unread_notification_count: 0
+      }).should.deep.equal({
+        data: {
+          user_unread_notification_count: '0'
+        }
+      })
+
+      f({
         notification_id: 0,
         notification_html: '',
         creator_username: 'foo',
@@ -268,6 +276,18 @@ describe('helper', function () {
       })
 
       f({
+        user_unread_notification_count: 0
+      }).should.deep.equal({
+        content_available: true,
+        notification: {
+          badge: '0'
+        },
+        data: {
+          user_unread_notification_count: '0'
+        }
+      })
+
+      f({
         notification_id: 0,
         notification_html: '',
         creator_username: 'foo',
@@ -310,13 +330,19 @@ describe('helper', function () {
         }
       })
 
-      f({ key: 'value' }).should.deep.equal({ data: { key: 'value' } })
+      f({ key: 'value' }).should.deep.equal({
+        content_available: true,
+        data: { key: 'value' }
+      })
 
       f({
         key: 'value',
         notification_id: 0,
         notification_html: 'irrelevant'
-      }).should.deep.equal({ data: { key: 'value' } })
+      }).should.deep.equal({
+        content_available: true,
+        data: { key: 'value' }
+      })
     })
 
     it('should prepare click action', () => {
@@ -455,7 +481,10 @@ describe('helper', function () {
       const expectedData = _.clone(params)
       expectedData.has_all_required_keys = true
 
+      // from reqBody
       expect(f(params)).to.deep.equal(expectedData)
+
+      // from reqQuery
       expect(f(null, params)).to.deep.equal(expectedData)
     })
 
