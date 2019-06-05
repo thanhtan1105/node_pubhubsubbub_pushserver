@@ -302,7 +302,7 @@ describe('helper', function () {
         notification: {
           body: 'foo: hello world',
           tag: 'conversationId=1 messageId=1',
-          title: 'convo title',
+          title: 'convo title'
         },
         data: {
           'creator_username': 'foo',
@@ -375,6 +375,24 @@ describe('helper', function () {
           tag: 'notificationId=1'
         },
         data: { notification_id: '1' }
+      })
+
+      helper.prepareFcmPayload(
+        {
+          user_unread_notification_count: 0
+        },
+        {
+          notification: true,
+          clickAction: 'CLICK_ACTION'
+        }
+      ).should.deep.equal({
+        contentAvailable: true,
+        notification: {
+          badge: '0'
+        },
+        data: {
+          user_unread_notification_count: '0'
+        }
       })
     })
   })
