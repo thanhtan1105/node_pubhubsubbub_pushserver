@@ -1,0 +1,6 @@
+{
+    "workbench.colorTheme": "Slack Theme Aubergine - NEW COLOR",
+    "workbench.iconTheme": "material-icon-theme",
+    "materialTheme.accent": "Orange",
+    "scss.lint.argumentsInColorFunction": "warning"
+}
