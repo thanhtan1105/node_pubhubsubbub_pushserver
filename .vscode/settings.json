@@ -1,5 +1,5 @@
 {
     "workbench.iconTheme": "material-icon-theme",
     "scss.lint.argumentsInColorFunction": "warning",
-    "editor.fontSize": 18
+    "editor.fontSize": 14
 }

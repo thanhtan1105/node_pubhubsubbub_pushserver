@@ -4,6 +4,7 @@
 
 const config = require('../lib/config')
 const pusher = require('../lib/pusher')
+const pushQueueFcm = require('../lib/pushQueueFcm')
 const pushQueue = require('../lib/pushQueue')
 const web = require('../lib/web')
 const chai = require('chai')
@@ -60,10 +61,11 @@ describe('app', function () {
     db.hubs._reset()
     db.projects._reset()
     web._reset()
-    pushNoti._reset()
 
+    pushQueueFcm.setup(pushKue, pusher.setupDefault(), db)
     pushQueue.setup(pushKue, pusher.setupDefault(), db)
-    server = web.start(db, pushQueue)
+    server = web.startPushQueueFcm(db, pushQueue, pushQueueFcm);
+    
     webApp = chai.request(server).keepOpen()
     pushNoti = chai.request(server).keepOpen()
 
@@ -83,7 +85,7 @@ describe('app', function () {
   after(function (done) {
     nock.cleanAll()
     nock.enableNetConnect()
-    server.close()
+    // server.close()
     done()
   })
 
@@ -93,7 +95,7 @@ describe('app', function () {
 
     const setup = () =>
       webApp
-        .post('/push')
+        .post('/fcm/push')
         .auth(adminUsername, adminPassword)
         .send([
           {
@@ -115,7 +117,7 @@ describe('app', function () {
         ])
         .end((err, res) => {
           expect(err).to.be.null
-          res.should.have.status(202)
+          res.should.have.status(200)
           subscribe()
         })
 
@@ -161,17 +163,18 @@ describe('app', function () {
 
     let queuedBefore = 0
     let processedBefore = 0
-    const verifyPushQueueStats = () =>
-      pushQueue.stats().then(stats => {
-        stats.pushQueue.queued.should.equal(queuedBefore + 1)
-        stats.pushQueue.processed.should.equal(processedBefore + 1)
-        done()
-      })
+    // const verifyPushQueueStats = () =>
+    //     pushQueueFcm.stats().then(stats => {
+    //     stats.pushQueue.queued.should.equal(queuedBefore + 1)
+    //     stats.pushQueue.processed.should.equal(processedBefore + 1)
+    //     done()
+    //   })
 
-    pushQueue.stats().then(statsBefore => {
-      queuedBefore = statsBefore.pushQueue.queued
-      processedBefore = statsBefore.pushQueue.processed
-      setup()
-    })
+    setup()
+    // pushQueueFcm.stats().then(statsBefore => {
+    //   queuedBefore = statsBefore.pushQueue.queued
+    //   processedBefore = statsBefore.pushQueue.processed
+    //   setup()
+    // })
   })
 })
