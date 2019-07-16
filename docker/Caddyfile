@@ -1,0 +1,21 @@
+http://127.0.0.1,
+http://pushserver.local.xfrocks.com,
+http://45.55.91.220,
+http://push.appforo.com,
+https://push.appforo.com
+
+errors stdout
+log stdout
+
+basicauth /admin/db admin Tinhte.vn2016
+proxy /admin/db adminmongo:80 {
+  transparent
+}
+
+proxy / app:80 {
+  transparent
+}
+
+tls daohoangson+push.appforo.com@hoasen.com {
+  max_certs 10
+}
