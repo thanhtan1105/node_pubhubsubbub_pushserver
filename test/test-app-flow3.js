@@ -10,6 +10,7 @@ const web = require('../lib/web')
 const chai = require('chai')
 const _ = require('lodash')
 const nock = require('nock')
+const fcm = require('./mock/_modules-firebase-admin')
 
 chai.should()
 chai.use(require('chai-http'))
@@ -62,8 +63,8 @@ describe('app', function () {
     db.projects._reset()
     web._reset()
 
-    pushQueueFcm.setup(pushKue, pusher.setupDefault(), db)
-    pushQueue.setup(pushKue, pusher.setupDefault(), db)
+    pushQueueFcm.setup(pushKue, pusher.setup(null, fcm, null, null), db)
+    pushQueue.setup(pushKue, pusher.setup(null, fcm, null, null), db)
     server = web.startPushQueueFcm(db, pushQueue, pushQueueFcm);
     
     webApp = chai.request(server).keepOpen()
@@ -73,7 +74,7 @@ describe('app', function () {
   })
 
   beforeEach(function (done) {
-    db.devices._reset()
+    // db.devices._reset()
 
     nock('https://xfrocks.com')
       .post('/api/index.php?subscriptions')
@@ -95,29 +96,16 @@ describe('app', function () {
 
     const setup = () =>
       webApp
-        .post('/fcm/push')
+        .post('/admin/projects/fcm')
         .auth(adminUsername, adminPassword)
-        .send([
-          {
-            client_id: oauthClientId,
-            topic: hubTopic,
-            object_data: {
-              notification_id: notificationId,
-              notification_html: notificationHtml
-            }
-          },
-          {
-            client_id: oauthClientId2,
-            topic: hubTopic,
-            object_data: {
-              notification_id: notificationId,
-              notification_html: notificationHtml
-            }
-          }
-        ])
+        .send({
+          project_id: projectId,
+          client_email: 'user@domain.com',
+          private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
+        })
         .end((err, res) => {
           expect(err).to.be.null
-          res.should.have.status(200)
+          res.should.have.status(202)
           subscribe()
         })
 
@@ -142,39 +130,55 @@ describe('app', function () {
           callback()
         })
 
-    // const callback = () =>
-    //   webApp
-    //     .post('/callback')
-    //     .send([
-    //       {
-    //         client_id: oauthClientId,
-    //         topic: hubTopic,
-    //         object_data: {
-    //           notification_id: notificationId,
-    //           notification_html: notificationHtml
-    //         }
-    //       }
-    //     ])
-    //     .end((err, res) => {
-    //       expect(err).to.be.null
-    //       res.should.have.status(202)
-    //       setTimeout(verifyPushQueueStats, 100)
-    //     })
+    // fcmPayload
+  //   [
+  //     {
+  //         "client_id" : "xxx",
+  //         "topic" -> theo format "user_notification_2",
+  //         "payload" 
+  //     }
+  // ]
+    const callback = () =>
+      webApp
+      .post('/fcm/push')
+      .auth(adminUsername, adminPassword)
+      .send([
+        {
+          client_id: oauthClientId,
+          topic: hubTopic,
+          object_data: {
+            notification_id: notificationId,
+            notification_html: notificationHtml
+          }
+        },
+        {
+          client_id: oauthClientId2,
+          topic: hubTopic,
+          object_data: {
+            notification_id: notificationId,
+            notification_html: notificationHtml
+          }
+        }
+      ])
+      .end((err, res) => {        
+        expect(err).to.be.null
+        res.should.have.status(200)
+        setTimeout(verifyPushQueueStats, 100)
+      })
 
-    let queuedBefore = 0
-    let processedBefore = 0
-    // const verifyPushQueueStats = () =>
-    //     pushQueueFcm.stats().then(stats => {
-    //     stats.pushQueue.queued.should.equal(queuedBefore + 1)
-    //     stats.pushQueue.processed.should.equal(processedBefore + 1)
-    //     done()
-    //   })
-
-    setup()
-    // pushQueueFcm.stats().then(statsBefore => {
-    //   queuedBefore = statsBefore.pushQueue.queued
-    //   processedBefore = statsBefore.pushQueue.processed
-    //   setup()
-    // })
+      let queuedBefore = 0
+      let processedBefore = 0
+      const verifyPushQueueStats = () =>
+        pushQueueFcm.stats().then(stats => {
+          stats.pushQueueFcm.queued.should.equal(queuedBefore + 1)
+          stats.pushQueueFcm.processed.should.equal(processedBefore + 1)
+          done()
+        })
+  
+        pushQueueFcm.stats().then(statsBefore => {
+          queuedBefore = statsBefore.pushQueueFcm.queued
+          processedBefore = statsBefore.pushQueueFcm.processed
+          setup()
+      })
   })
 })
