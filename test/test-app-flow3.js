@@ -4,7 +4,7 @@
 
 const config = require('../lib/config')
 const pusher = require('../lib/pusher')
-const pushQueueFcm = require('../lib/pushQueueFcm')
+const pushQueueTinhte = require('../lib/pushQueueTinhte')
 const pushQueue = require('../lib/pushQueue')
 const web = require('../lib/web')
 const chai = require('chai')
@@ -20,7 +20,7 @@ const pushKue = require('./mock/pushKue')
 
 let server = null
 let webApp = null
-let pushNoti = null
+let tinhte = null
 
 const originalProcessEnv = _.merge({}, process.env)
 const adminUsername = 'username'
@@ -63,12 +63,12 @@ describe('app', function () {
     db.projects._reset()
     web._reset()
 
-    pushQueueFcm.setup(pushKue, pusher.setup(null, fcm, null, null), db)
+    pushQueueTinhte.setup(pushKue, pusher.setup(null, fcm, null, null), db)
     pushQueue.setup(pushKue, pusher.setup(null, fcm, null, null), db)
-    server = web.startPushQueueFcm(db, pushQueue, pushQueueFcm);
+    server = web.startPushQueueTinhte(db, pushQueue, pushQueueTinhte);
     
     webApp = chai.request(server).keepOpen()
-    pushNoti = chai.request(server).keepOpen()
+    tinhte = chai.request(server).keepOpen()
 
     done()
   })
@@ -129,55 +129,49 @@ describe('app', function () {
           res.text.should.equal('succeeded')
           callback()
         })
-
-    // fcmPayload
-  //   [
-  //     {
-  //         "client_id" : "xxx",
-  //         "topic" -> theo format "user_notification_2",
-  //         "payload" 
-  //     }
-  // ]
     const callback = () =>
       webApp
-      .post('/fcm/push')
+      .post('/tinhte/fcm-push')
       .auth(adminUsername, adminPassword)
       .send([
         {
           client_id: oauthClientId,
-          topic: hubTopic,
-          object_data: {
-            notification_id: notificationId,
-            notification_html: notificationHtml
+          payload: {
+            object_data: {
+              notification_id: notificationId,
+              notification_html: notificationHtml
+            }
           }
         },
         {
           client_id: oauthClientId2,
-          topic: hubTopic,
-          object_data: {
-            notification_id: notificationId,
-            notification_html: notificationHtml
+          payload: {
+            object_data: {
+              notification_id: notificationId,
+              notification_html: notificationHtml
+            }
           }
         }
       ])
       .end((err, res) => {        
         expect(err).to.be.null
-        res.should.have.status(200)
-        setTimeout(verifyPushQueueStats, 100)
+        res.should.have.status(202)
+        done()
+        // setTimeout(verifyPushQueueStats, 100)
       })
 
       let queuedBefore = 0
       let processedBefore = 0
       const verifyPushQueueStats = () =>
-        pushQueueFcm.stats().then(stats => {
-          stats.pushQueueFcm.queued.should.equal(queuedBefore + 1)
-          stats.pushQueueFcm.processed.should.equal(processedBefore + 1)
+        pushQueueTinhte.stats().then(stats => {
+          stats.pushQueueTinhte.queued.should.equal(queuedBefore + 1)
+          stats.pushQueueTinhte.processed.should.equal(processedBefore + 1)
           done()
         })
   
-        pushQueueFcm.stats().then(statsBefore => {
-          queuedBefore = statsBefore.pushQueueFcm.queued
-          processedBefore = statsBefore.pushQueueFcm.processed
+        pushQueueTinhte.stats().then(statsBefore => {
+          queuedBefore = statsBefore.pushQueueTinhte.queued
+          processedBefore = statsBefore.pushQueueTinhte.processed
           setup()
       })
   })
