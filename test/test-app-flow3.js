@@ -4,6 +4,7 @@
 
 const config = require('../lib/config')
 const pusher = require('../lib/pusher')
+const pusherFcm = require('../lib/pusher/fcm')
 const pushQueueTinhte = require('../lib/pushQueueTinhte')
 const pushQueue = require('../lib/pushQueue')
 const web = require('../lib/web')
@@ -42,6 +43,12 @@ const apn = {
   deviceType: 'ios',
   deviceId: 'deviceId'
 }
+const projectConfig = {
+  client_email: 'ce',
+  private_key: 'pk'
+}
+const registrationToken = 'rt'
+
 
 describe('app', function () {
   // eslint-disable-next-line no-invalid-this
@@ -173,6 +180,26 @@ describe('app', function () {
           queuedBefore = statsBefore.pushQueueTinhte.queued
           processedBefore = statsBefore.pushQueueTinhte.processed
           setup()
+      })
+  })
+
+  it('should push notification', done => {   
+    pusherFcm.setup(config, fcm)
+    
+    const projectId = 'firebase-pi'
+    const payloadWithNotification = { notification: { body: 'body' } }
+    pusherFcm.send(
+      projectId,
+      projectConfig,
+      registrationToken,
+      payloadWithNotification,
+      (err, result) => {
+        expect(err).to.be.undefined
+        result.sent.should.equal(1)
+        const push = fcm._getLatestPush()
+        push.payload.should.deep.equal(payloadWithNotification)
+        push.options.should.deep.equal({})
+        done()
       })
   })
 })
