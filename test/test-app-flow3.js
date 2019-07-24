@@ -4,12 +4,14 @@
 
 const config = require('../lib/config')
 const pusher = require('../lib/pusher')
-const pushQueueFcm = require('../lib/pushQueueFcm')
+const pusherFcm = require('../lib/pusher/fcm')
+const pushQueueTinhte = require('../lib/pushQueueTinhte')
 const pushQueue = require('../lib/pushQueue')
 const web = require('../lib/web')
 const chai = require('chai')
 const _ = require('lodash')
 const nock = require('nock')
+const fcm = require('./mock/_modules-firebase-admin')
 
 chai.should()
 chai.use(require('chai-http'))
@@ -19,7 +21,7 @@ const pushKue = require('./mock/pushKue')
 
 let server = null
 let webApp = null
-let pushNoti = null
+let tinhte = null
 
 const originalProcessEnv = _.merge({}, process.env)
 const adminUsername = 'username'
@@ -41,6 +43,12 @@ const apn = {
   deviceType: 'ios',
   deviceId: 'deviceId'
 }
+const projectConfig = {
+  client_email: 'ce',
+  private_key: 'pk'
+}
+const registrationToken = 'rt'
+
 
 describe('app', function () {
   // eslint-disable-next-line no-invalid-this
@@ -62,18 +70,18 @@ describe('app', function () {
     db.projects._reset()
     web._reset()
 
-    pushQueueFcm.setup(pushKue, pusher.setupDefault(), db)
-    pushQueue.setup(pushKue, pusher.setupDefault(), db)
-    server = web.startPushQueueFcm(db, pushQueue, pushQueueFcm);
+    pushQueueTinhte.setup(pushKue, pusher.setup(null, fcm, null, null), db)
+    pushQueue.setup(pushKue, pusher.setup(null, fcm, null, null), db)
+    server = web.startPushQueueTinhte(db, pushQueue, pushQueueTinhte);
     
     webApp = chai.request(server).keepOpen()
-    pushNoti = chai.request(server).keepOpen()
+    tinhte = chai.request(server).keepOpen()
 
     done()
   })
 
   beforeEach(function (done) {
-    db.devices._reset()
+    // db.devices._reset()
 
     nock('https://xfrocks.com')
       .post('/api/index.php?subscriptions')
@@ -95,29 +103,16 @@ describe('app', function () {
 
     const setup = () =>
       webApp
-        .post('/fcm/push')
+        .post('/admin/projects/fcm')
         .auth(adminUsername, adminPassword)
-        .send([
-          {
-            client_id: oauthClientId,
-            topic: hubTopic,
-            object_data: {
-              notification_id: notificationId,
-              notification_html: notificationHtml
-            }
-          },
-          {
-            client_id: oauthClientId2,
-            topic: hubTopic,
-            object_data: {
-              notification_id: notificationId,
-              notification_html: notificationHtml
-            }
-          }
-        ])
+        .send({
+          project_id: projectId,
+          client_email: 'user@domain.com',
+          private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
+        })
         .end((err, res) => {
           expect(err).to.be.null
-          res.should.have.status(200)
+          res.should.have.status(202)
           subscribe()
         })
 
@@ -141,40 +136,70 @@ describe('app', function () {
           res.text.should.equal('succeeded')
           callback()
         })
+    const callback = () =>
+      webApp
+      .post('/tinhte/fcm-push')
+      .auth(adminUsername, adminPassword)
+      .send([
+        {
+          client_id: oauthClientId,
+          payload: {
+            object_data: {
+              notification_id: notificationId,
+              notification_html: notificationHtml
+            }
+          }
+        },
+        {
+          client_id: oauthClientId2,
+          payload: {
+            object_data: {
+              notification_id: notificationId,
+              notification_html: notificationHtml
+            }
+          }
+        }
+      ])
+      .end((err, res) => {        
+        expect(err).to.be.null
+        res.should.have.status(202)
+        done()
+        // setTimeout(verifyPushQueueStats, 100)
+      })
 
-    // const callback = () =>
-    //   webApp
-    //     .post('/callback')
-    //     .send([
-    //       {
-    //         client_id: oauthClientId,
-    //         topic: hubTopic,
-    //         object_data: {
-    //           notification_id: notificationId,
-    //           notification_html: notificationHtml
-    //         }
-    //       }
-    //     ])
-    //     .end((err, res) => {
-    //       expect(err).to.be.null
-    //       res.should.have.status(202)
-    //       setTimeout(verifyPushQueueStats, 100)
-    //     })
+      let queuedBefore = 0
+      let processedBefore = 0
+      const verifyPushQueueStats = () =>
+        pushQueueTinhte.stats().then(stats => {
+          stats.pushQueueTinhte.queued.should.equal(queuedBefore + 1)
+          stats.pushQueueTinhte.processed.should.equal(processedBefore + 1)
+          done()
+        })
+  
+        pushQueueTinhte.stats().then(statsBefore => {
+          queuedBefore = statsBefore.pushQueueTinhte.queued
+          processedBefore = statsBefore.pushQueueTinhte.processed
+          setup()
+      })
+  })
 
-    let queuedBefore = 0
-    let processedBefore = 0
-    // const verifyPushQueueStats = () =>
-    //     pushQueueFcm.stats().then(stats => {
-    //     stats.pushQueue.queued.should.equal(queuedBefore + 1)
-    //     stats.pushQueue.processed.should.equal(processedBefore + 1)
-    //     done()
-    //   })
-
-    setup()
-    // pushQueueFcm.stats().then(statsBefore => {
-    //   queuedBefore = statsBefore.pushQueue.queued
-    //   processedBefore = statsBefore.pushQueue.processed
-    //   setup()
-    // })
+  it('should push notification', done => {   
+    pusherFcm.setup(config, fcm)
+    
+    const projectId = 'firebase-pi'
+    const payloadWithNotification = { notification: { body: 'body' } }
+    pusherFcm.send(
+      projectId,
+      projectConfig,
+      registrationToken,
+      payloadWithNotification,
+      (err, result) => {
+        expect(err).to.be.undefined
+        result.sent.should.equal(1)
+        const push = fcm._getLatestPush()
+        push.payload.should.deep.equal(payloadWithNotification)
+        push.options.should.deep.equal({})
+        done()
+      })
   })
 })
