@@ -62,7 +62,7 @@ describe('full app', function () {
 
         const stats = res.body
         stats.should.have.all.keys(
-          ['uptime', 'db', 'pusher', 'pushQueue', 'web'])
+          ['uptime', 'db', 'pusher', 'pushQueue', 'pushQueueTinhte', 'web'])
 
         stats.db.should.have.all.keys(
           ['devices', 'hubs', 'projects'])
@@ -76,6 +76,8 @@ describe('full app', function () {
         stats.pusher.should.have.all.keys(
           ['apn', 'fcm', 'gcm', 'wns'])
         stats.pushQueue.should.have.all.keys(
+          ['queued', 'processed'])
+        stats.pushQueueTinhte.should.have.all.keys(
           ['queued', 'processed'])
 
         stats.web.should.have.all.keys(

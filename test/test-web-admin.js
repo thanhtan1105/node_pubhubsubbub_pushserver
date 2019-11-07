@@ -24,7 +24,7 @@ describe('web/admin', function () {
     web._reset()
     server = http.createServer(web.app()).listen(0)
     webApp = chai.request(server).keepOpen()
-    admin.setup(web.app(), '/admin', null, null, null, db)
+    admin.setup(web.app(), '/admin', null, null, db)
     done()
   })
 
@@ -560,10 +560,7 @@ describe('web/admin', function () {
       'five': null
     }
 
-    admin.setup(web.app(),
-      adminPrefix, null, null,
-      null, null, null, sections
-    )
+    admin.setup(web.app(), adminPrefix, null, null, null, [], sections)
 
     const test0 = function () {
       webApp
