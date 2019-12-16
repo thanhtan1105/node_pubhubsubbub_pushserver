@@ -72,7 +72,7 @@ describe('app', function () {
 
     pushQueueTinhte.setup(pushKue, pusher.setup(null, fcm, null, null), db)
     pushQueue.setup(pushKue, pusher.setup(null, fcm, null, null), db)
-    server = web.startPushQueueTinhte(db, pushQueue, pushQueueTinhte);
+    server = web.start(db, pushQueue, pushQueueTinhte);
     
     webApp = chai.request(server).keepOpen()
     tinhte = chai.request(server).keepOpen()
@@ -140,18 +140,10 @@ describe('app', function () {
       webApp
       .post('/tinhte/fcm-push')
       .auth(adminUsername, adminPassword)
-      .send([
+      .send(
         {
-          client_id: oauthClientId,
-          payload: {
-            object_data: {
-              notification_id: notificationId,
-              notification_html: notificationHtml
-            }
-          }
-        },
-        {
-          client_id: oauthClientId2,
+          client_id: ['oauthClientId', 'oauthClientId2'],
+          user_id: ['user_id1', 'user_id2', 'user_id3'],
           payload: {
             object_data: {
               notification_id: notificationId,
@@ -159,7 +151,7 @@ describe('app', function () {
             }
           }
         }
-      ])
+      )
       .end((err, res) => {        
         expect(err).to.be.null
         res.should.have.status(202)
