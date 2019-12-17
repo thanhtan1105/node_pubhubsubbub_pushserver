@@ -144,12 +144,7 @@ describe('app', function () {
         {
           client_id: ['oauthClientId', 'oauthClientId2'],
           user_id: ['user_id1', 'user_id2', 'user_id3'],
-          payload: {
-            object_data: {
-              notification_id: notificationId,
-              notification_html: notificationHtml
-            }
-          }
+          payload: { notification: { title: 'xxx' } }
         }
       )
       .end((err, res) => {        
@@ -175,7 +170,7 @@ describe('app', function () {
       })
   })
 
-  it('should push notification', done => {   
+  it.only('should push notification', done => {   
     pusherFcm.setup(config, fcm)
     
     const projectId = 'firebase-pi'
