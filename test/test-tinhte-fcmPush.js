@@ -170,7 +170,7 @@ describe('app', function () {
       })
   })
 
-  it.only('should push notification', done => {   
+  it('should push notification', done => {   
     pusherFcm.setup(config, fcm)
     
     const projectId = 'firebase-pi'
