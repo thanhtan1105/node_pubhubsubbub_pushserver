@@ -81,7 +81,7 @@ describe('app', function () {
   })
 
   beforeEach(function (done) {
-    // db.devices._reset()
+    db.devices._reset()
 
     nock('https://xfrocks.com')
       .post('/api/index.php?subscriptions')
@@ -93,7 +93,7 @@ describe('app', function () {
   after(function (done) {
     nock.cleanAll()
     nock.enableNetConnect()
-    // server.close()
+    server.close()
     done()
   })
 
