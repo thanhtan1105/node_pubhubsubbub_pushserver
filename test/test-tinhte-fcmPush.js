@@ -30,10 +30,10 @@ const hubUri = 'https://xfrocks.com/api/index.php?subscriptions'
 const hubTopicUser1 = 'user_notification_1'
 const hubTopicUser2 = 'user_notification_2'
 const hubTopicUser3 = 'user_notification_3'
-const oauthClientId = 'gljf4391k3'
+const oauthClientId1 = 'gljf4391k3'
 const oauthClientId2 = 'gljf4391k32'
 const oauthClientId3 = 'gljf4391k33'
-const oauthToken = '83ae5ed7f9b0b5bb392af3f2f57dabf1ba3fe2e5'
+const oauthToken1 = '83ae5ed7f9b0b5bb392af3f2f57dabf1ba3fe2e5'
 const oauthToken2 = '83ae5ed7f9b0b5bb392af3f2f57dabf1ba3fe2e6'
 const oauthToken3 = '83ae5ed7f9b0b5bb392af3f2f57dabf1ba3fe2e7'
 const apn = {
@@ -66,23 +66,43 @@ const setupProject = function(info, nextStep) {
   })
 }
 
-const firstSubscribe = function(info, nextStep) {
-  webApp
-      .post('/subscribe')
-      .send({
-        hub_uri: hubUri,
-        hub_topic: hubTopicUser1,
-        oauth_client_id: oauthClientId,
-        oauth_token: oauthToken,
-        extra_data: {
-          project: info.projectId
-        },
-        device_type: 'firebase',
-        device_id: info.deviceId
-      })
-      .end((err, res) => {
-        nextStep(err, res);
-      })
+const addSubscribe = function(info, nextStep) {
+  var hubTopicUser = null;
+  var oauthClientId = null;
+  var oauthToken = null;
+
+  if (info.userId == 1) {
+    hubTopicUser = hubTopicUser1;
+    oauthClientId = oauthClientId1;
+    oauthToken = oauthToken1;
+  } else if (info.userId == 2) {
+    hubTopicUser = hubTopicUser2;
+    oauthClientId = oauthClientId2;
+    oauthToken = oauthToken2;
+  } else if (info.userId == 3) {
+    hubTopicUser = hubTopicUser2;
+    oauthClientId = oauthClientId2;
+    oauthToken = oauthToken2;
+  }
+
+  if (hubTopicUser != null && oauthClientId != null && oauthToken != null) {
+    webApp
+    .post('/subscribe')
+    .send({
+      hub_uri: hubUri,
+      hub_topic: hubTopicUser,
+      oauth_client_id: oauthClientId,
+      oauth_token: oauthToken,
+      extra_data: {
+        project: info.projectId
+      },
+      device_type: 'firebase',
+      device_id: info.deviceId
+    })
+    .end((err, res) => {
+      nextStep(err, res);
+    })
+  }
 };
 
 const fcmPush = function(info, callback) {
@@ -138,6 +158,14 @@ describe('app', function () {
       .post('/api/index.php?subscriptions')
       .reply(202)
 
+    const projectId = 'firebase-pi'
+    setupProject({
+      projectId: projectId
+    },(err, res) => {
+      expect(err).to.be.null
+      res.should.have.status(202)
+    });
+
     done()
   })
 
@@ -150,21 +178,12 @@ describe('app', function () {
 
   it('should works with fcm 1 oauthClientId and 1 user_id', done => {
     const deviceId = 'firebase-di'
-    const projectId = 'firebase-pi'
-
-    const setup = () =>
-      setupProject({
-        projectId: projectId
-      },(err, res) => {
-        expect(err).to.be.null
-        res.should.have.status(202)
-        subscribe()
-      });
 
     const subscribe = () =>
-      firstSubscribe ({
+      addSubscribe ({
+        userId: 1,
         projectId: projectId,
-        deviceId: deviceId
+        deviceId: deviceId,
       }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
@@ -178,7 +197,7 @@ describe('app', function () {
         adminUsername: adminUsername,
         adminPassword: adminPassword,
         cliendId: [oauthClientId, oauthClientId2],
-        userId: [1, 2, 3],
+        userId: [1],
         payload: { notification: { title: 'xxx' } },
       }, (err, res) => {
         expect(err).to.be.null
@@ -199,25 +218,16 @@ describe('app', function () {
     pushQueueTinhte.stats().then(statsBefore => {
       queuedBefore = statsBefore.pushQueueTinhte.queued
       processedBefore = statsBefore.pushQueueTinhte.processed
-      setup()
+      subscribe()
     })
   })
 
   it('should works with fcm 1 oauthClientId and multiple user_id ', done => {
     const deviceId = 'firebase-di'
-    const projectId = 'firebase-pi'
-
-    const setup = () =>
-      setupProject({
-        projectId: projectId
-      },(err, res) => {
-        expect(err).to.be.null
-        res.should.have.status(202)
-        subscribe()
-      });
 
     const subscribe = () =>
       firstSubscribe ({
+        userId: 1,
         projectId: projectId,
         deviceId: deviceId
       }, (err, res) => {
@@ -254,7 +264,7 @@ describe('app', function () {
       pushQueueTinhte.stats().then(statsBefore => {
         queuedBefore = statsBefore.pushQueueTinhte.queued
         processedBefore = statsBefore.pushQueueTinhte.processed
-        setup()
+        subscribe()
       })
   })
 
@@ -265,77 +275,41 @@ describe('app', function () {
     const deviceId2 = 'firebase-di-2'
     const projectId = 'firebase-pi'
 
-    const setup = () =>
-      webApp
-        .post('/admin/projects/fcm')
-        .auth(adminUsername, adminPassword)
-        .send({
-          project_id: projectId,
-          client_email: 'user@domain.com',
-          private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          subscribe()
-        })
-
     const subscribe = () =>
-      webApp
-        .post('/subscribe')
-        .send({
-          hub_uri: hubUri,
-          hub_topic: hubTopicUser1,
-          oauth_client_id: oauthClientId,
-          oauth_token: oauthToken,
-          extra_data: {
-            project: projectId
-          },
-          device_type: 'firebase',
-          device_id: deviceId
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          res.text.should.equal('succeeded')          
-          subscribe2()
-        })   
-    const subscribe2 = () =>
-      webApp
-        .post('/subscribe')
-        .send({
-            hub_uri: hubUri,
-            hub_topic: hubTopicUser2,
-            oauth_client_id: oauthClientId2,
-            oauth_token: oauthToken2,
-            extra_data: {
-              project: projectId
-            },
-            device_type: 'firebase',
-            device_id: deviceId2
-          })
-          .end((err, res) => {
-            expect(err).to.be.null
-            res.should.have.status(202)
-            res.text.should.equal('succeeded')
-            callback()
-          })  
-
-    const callback = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: [oauthClientId, oauthClientId2],
-          user_id: [1, 2, 3],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {        
+      addSubscribe ({
+        userId: 1,
+        projectId: projectId,
+        deviceId: deviceId
+      }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
-        // done()
+        res.text.should.equal('succeeded')
+        subscribe2()
+      });
+
+    const subscribe2 = () =>
+      addSubscribe ({
+        userId: 2,
+        projectId: projectId,
+        deviceId: deviceId2
+      }, (err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
+        res.text.should.equal('succeeded')
+        callback()
+      });
+
+    const callback = () =>
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId, oauthClientId2],
+        userId: [1, 2, 3],
+        payload: { notification: { title: 'xxx' } },
+      }, (err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
         setTimeout(verifyPushQueueStats, 100)
       })
 
@@ -352,7 +326,7 @@ describe('app', function () {
       pushQueueTinhte.stats().then(statsBefore => {
         queuedBefore = statsBefore.pushQueueTinhte.queued
         processedBefore = statsBefore.pushQueueTinhte.processed
-        setup()
+        subscribe()
       })
   })
 
@@ -361,80 +335,42 @@ describe('app', function () {
 
     const deviceId = 'firebase-di'
     const deviceId2 = 'firebase-di-2'
-    const projectId = 'firebase-pi'
-
-    const setup = () =>
-      webApp
-        .post('/admin/projects/fcm')
-        .auth(adminUsername, adminPassword)
-        .send({
-          project_id: projectId,
-          client_email: 'user@domain.com',
-          private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          subscribe()
-        })
 
     const subscribe = () =>
-      webApp
-        .post('/subscribe')
-        .send({
-          hub_uri: hubUri,
-          hub_topic: hubTopicUser1,
-          oauth_client_id: oauthClientId,
-          oauth_token: oauthToken,
-          extra_data: {
-            project: projectId
-          },
-          device_type: 'firebase',
-          device_id: deviceId
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          res.text.should.equal('succeeded')
-          
-          subscribe2()
-        })   
-    const subscribe2 = () =>
-      webApp
-        .post('/subscribe')
-        .send({
-            hub_uri: hubUri,
-            hub_topic: hubTopicUser2,
-            oauth_client_id: oauthClientId2,
-            oauth_token: oauthToken2,
-            extra_data: {
-              project: projectId
-            },
-            device_type: 'firebase',
-            device_id: deviceId2
-          })
-          .end((err, res) => {
-            expect(err).to.be.null
-            res.should.have.status(202)
-            res.text.should.equal('succeeded')
-            callback()
-          })  
-
-    const callback = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: [oauthClientId, oauthClientId2],
-          user_id: [1],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {        
+      addSubscribe ({
+        userId: 1,
+        projectId: projectId,
+        deviceId: deviceId
+      }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
-        // done()
+        res.text.should.equal('succeeded')
+        subscribe2()
+      });
+
+    const subscribe2 = () =>
+      addSubscribe ({
+        userId: 2,
+        projectId: projectId,
+        deviceId: deviceId2
+      }, (err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
+        res.text.should.equal('succeeded')
+        callback()
+      });
+
+    const callback = () =>
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId, oauthClientId2],
+        userId: [1],
+        payload: { notification: { title: 'xxx' } },
+      }, (err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
         setTimeout(verifyPushQueueStats, 100)
       })
 
@@ -451,7 +387,7 @@ describe('app', function () {
       pushQueueTinhte.stats().then(statsBefore => {
         queuedBefore = statsBefore.pushQueueTinhte.queued
         processedBefore = statsBefore.pushQueueTinhte.processed
-        setup()
+        subscribe()
       })
   })
 
@@ -477,59 +413,52 @@ describe('app', function () {
 
   it('client id missing key', done => {
     const callFcmPush = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          user_id: ['user_id1', 'user_id2', 'user_id3'],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {        
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId, oauthClientId2],
+        userId: ['user_id1', 'user_id2', 'user_id3'],
+        payload: { notification: { title: 'xxx' } }
+      }, (err, res) => {
+        expect(err).to.be.null
         res.should.have.status(400)
         done()
       })
 
-      callFcmPush();
+    callFcmPush();
   })
 
   it('payload missing key', done => {
     const callFcmPush = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: ['oauthClientId', 'oauthClientId2'],
-          user_id: ['user_id1', 'user_id2', 'user_id3'],
-        }
-      )
-      .end((err, res) => {        
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId, oauthClientId2],
+        userId: ['user_id1', 'user_id2', 'user_id3'],
+      }, (err, res) => {
+        expect(err).to.be.null
         res.should.have.status(400)
         done()
       })
-
       callFcmPush();
   })
 
   it('user_id missing key', done => {
     const callFcmPush = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: ['oauthClientId', 'oauthClientId2'],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {        
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId, oauthClientId2],
+        payload: { notification: { title: 'xxx' } }
+      }, (err, res) => {
+        expect(err).to.be.null
         res.should.have.status(400)
         done()
       })
-
-      callFcmPush();
+    callFcmPush();
   })
 
   it('send data does not JSON type', done => {
@@ -544,50 +473,41 @@ describe('app', function () {
         res.should.have.status(400)
         done()
       })
-
       callFcmPush();
   })
 
   it('send client_id is empty array', done => {
     const callFcmPush = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: [],
-          user_id: ['user_id1', 'user_id2', 'user_id3'],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {     
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [],
+        userId: ['user_id1', 'user_id2', 'user_id3'],
+        payload: { notification: { title: 'xxx' } }
+      }, (err, res) => {
         expect(err).to.be.null
-        res.should.have.status(202)
+        res.should.have.status(400)
         done()
       })
-
-      callFcmPush();
+    callFcmPush();
   })
 
   it('send user_id is empty array', done => {
     const callFcmPush = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: ['oauthClientId', 'oauthClientId2'],
-          user_id: [],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {     
+      fcmPush({
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: ['oauthClientId', 'oauthClientId2'],
+        userId: [],
+        payload: { notification: { title: 'xxx' } }
+      }, (err, res) => {
         expect(err).to.be.null
-        res.should.have.status(202)
+        res.should.have.status(400)
         done()
       })
-
-      callFcmPush();
+    callFcmPush();
   })
 
   it('send payload is empty', done => {
@@ -607,9 +527,6 @@ describe('app', function () {
         res.should.have.status(202)
         done()
       })
-
       callFcmPush();
   })
-
-
 })
