@@ -100,27 +100,22 @@ describe('app', function () {
     done()
   })
 
-  it('should works with fcm 1 oauthClientId and 1 user_id', done => {
-    const deviceId = 'firebase-di'
-    const projectId = 'firebase-pi'
+  setupProject(function (nextStep) {
+    webApp
+    .post('/admin/projects/fcm')
+    .auth(adminUsername, adminPassword)
+    .send({
+      project_id: projectId,
+      client_email: 'user@domain.com',
+      private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
+    })
+    .end((err, res) => {
+      nextStep(err, res);
+    })
+  });
 
-    const setup = () =>
-      webApp
-        .post('/admin/projects/fcm')
-        .auth(adminUsername, adminPassword)
-        .send({
-          project_id: projectId,
-          client_email: 'user@domain.com',
-          private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          subscribe()
-        })
-
-    const subscribe = () =>
-      webApp
+  firstSubscribe(function (nextStep) {
+    webApp
         .post('/subscribe')
         .send({
           hub_uri: hubUri,
@@ -134,44 +129,69 @@ describe('app', function () {
           device_id: deviceId
         })
         .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          res.text.should.equal('succeeded')
-          callback()
+          nextStep(err, res);
         })
-    const callback = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: [oauthClientId],
-          user_id: [1],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {        
+  });
+
+  fcmPush(info, function (callback) {
+    webApp
+    .post(info.url)
+    .auth(info.adminUsername, info.adminPassword)
+    .send(
+      {
+        client_id: info.cliendId,
+        user_id: info.userId,
+        payload: info.payload
+      }
+    )
+    .end((err, res) => {     
+      callback(err, res);
+    })
+  })
+
+  it('should works with fcm 1 oauthClientId and 1 user_id', done => {
+    const deviceId = 'firebase-di'
+    const projectId = 'firebase-pi'
+
+    const setup = () =>
+      setupProject((err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
-        // done()
+        subscribe()
+      });
+
+    const subscribe = () =>
+      firstSubscribe ((err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
+        res.text.should.equal('succeeded')
+        callback();
+      })
+
+    const callback = () =>
+      fcmPush({
+
+      }, (err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
         setTimeout(verifyPushQueueStats, 100)
       })
 
-      let queuedBefore = 0
-      let processedBefore = 0
-      const verifyPushQueueStats = function () {
-        pushQueueTinhte.stats().then(stats => {
-          stats.pushQueueTinhte.queued.should.equal(queuedBefore + 1)
-          stats.pushQueueTinhte.processed.should.equal(processedBefore + 1)
-          done()
-        })
-      }
-      
-      pushQueueTinhte.stats().then(statsBefore => {
-        queuedBefore = statsBefore.pushQueueTinhte.queued
-        processedBefore = statsBefore.pushQueueTinhte.processed
-        setup()
+    let queuedBefore = 0
+    let processedBefore = 0
+    const verifyPushQueueStats = function () {
+      pushQueueTinhte.stats().then(stats => {
+        stats.pushQueueTinhte.queued.should.equal(queuedBefore + 1)
+        stats.pushQueueTinhte.processed.should.equal(processedBefore + 1)
+        done()
       })
+    }
+    
+    pushQueueTinhte.stats().then(statsBefore => {
+      queuedBefore = statsBefore.pushQueueTinhte.queued
+      processedBefore = statsBefore.pushQueueTinhte.processed
+      setup()
+    })
   })
 
   it('should works with fcm 1 oauthClientId and multiple user_id ', done => {
@@ -179,55 +199,25 @@ describe('app', function () {
     const projectId = 'firebase-pi'
 
     const setup = () =>
-      webApp
-        .post('/admin/projects/fcm')
-        .auth(adminUsername, adminPassword)
-        .send({
-          project_id: projectId,
-          client_email: 'user@domain.com',
-          private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          subscribe()
-        })
-
-    const subscribe = () =>
-      webApp
-        .post('/subscribe')
-        .send({
-          hub_uri: hubUri,
-          hub_topic: hubTopicUser1,
-          oauth_client_id: oauthClientId,
-          oauth_token: oauthToken,
-          extra_data: {
-            project: projectId
-          },
-          device_type: 'firebase',
-          device_id: deviceId
-        })
-        .end((err, res) => {
-          expect(err).to.be.null
-          res.should.have.status(202)
-          res.text.should.equal('succeeded')
-          callback()
-        })
-    const callback = () =>
-      webApp
-      .post('/tinhte/fcm-push')
-      .auth(adminUsername, adminPassword)
-      .send(
-        {
-          client_id: [oauthClientId],
-          user_id: [1, 2, 3],
-          payload: { notification: { title: 'xxx' } }
-        }
-      )
-      .end((err, res) => {        
+      setupProject((err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
-        // done()
+        subscribe()
+      });
+
+    const subscribe = () =>
+      firstSubscribe ((err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
+        res.text.should.equal('succeeded')
+        callback();
+      });
+    const callback = () =>
+      fcmPush({
+        
+      }, (err, res) => {
+        expect(err).to.be.null
+        res.should.have.status(202)
         setTimeout(verifyPushQueueStats, 100)
       })
 
