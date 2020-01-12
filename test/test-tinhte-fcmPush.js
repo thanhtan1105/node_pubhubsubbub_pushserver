@@ -52,6 +52,54 @@ const projectConfig = {
 }
 const registrationToken = 'rt'
 
+const setupProject = function(info, nextStep) {
+  webApp
+  .post('/admin/projects/fcm')
+  .auth(adminUsername, adminPassword)
+  .send({
+    project_id: info.projectId,
+    client_email: 'user@domain.com',
+    private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
+  })
+  .end((err, res) => {
+    nextStep(err, res);
+  })
+}
+
+const firstSubscribe = function(info, nextStep) {
+  webApp
+      .post('/subscribe')
+      .send({
+        hub_uri: hubUri,
+        hub_topic: hubTopicUser1,
+        oauth_client_id: oauthClientId,
+        oauth_token: oauthToken,
+        extra_data: {
+          project: info.projectId
+        },
+        device_type: 'firebase',
+        device_id: info.deviceId
+      })
+      .end((err, res) => {
+        nextStep(err, res);
+      })
+};
+
+const fcmPush = function(info, callback) {
+  webApp
+  .post(info.url)
+  .auth(info.adminUsername, info.adminPassword)
+  .send(
+    {
+      client_id: info.cliendId,
+      user_id: info.userId,
+      payload: info.payload
+    }
+  )
+  .end((err, res) => {     
+    callback(err, res);
+  })
+};
 
 describe('app', function () {
   // eslint-disable-next-line no-invalid-this
@@ -100,68 +148,24 @@ describe('app', function () {
     done()
   })
 
-  setupProject(function (nextStep) {
-    webApp
-    .post('/admin/projects/fcm')
-    .auth(adminUsername, adminPassword)
-    .send({
-      project_id: projectId,
-      client_email: 'user@domain.com',
-      private_key: '-----BEGIN RSA PRIVATE KEY-----\nMGUCAQACEQDZ9yHDjBHwQKkk+I3pfVeVAgMBAAECEQCw9uXR1zJlRQoGH0SKmPiB\nAgkA+w3y/vic1aECCQDeQlECbNmVdQIJAJPvYlLweKpBAgkAqBpAazUo3IECCQDj\nX4gCHu8E+w==\n-----END RSA PRIVATE KEY-----'
-    })
-    .end((err, res) => {
-      nextStep(err, res);
-    })
-  });
-
-  firstSubscribe(function (nextStep) {
-    webApp
-        .post('/subscribe')
-        .send({
-          hub_uri: hubUri,
-          hub_topic: hubTopicUser1,
-          oauth_client_id: oauthClientId,
-          oauth_token: oauthToken,
-          extra_data: {
-            project: projectId
-          },
-          device_type: 'firebase',
-          device_id: deviceId
-        })
-        .end((err, res) => {
-          nextStep(err, res);
-        })
-  });
-
-  fcmPush(info, function (callback) {
-    webApp
-    .post(info.url)
-    .auth(info.adminUsername, info.adminPassword)
-    .send(
-      {
-        client_id: info.cliendId,
-        user_id: info.userId,
-        payload: info.payload
-      }
-    )
-    .end((err, res) => {     
-      callback(err, res);
-    })
-  })
-
   it('should works with fcm 1 oauthClientId and 1 user_id', done => {
     const deviceId = 'firebase-di'
     const projectId = 'firebase-pi'
 
     const setup = () =>
-      setupProject((err, res) => {
+      setupProject({
+        projectId: projectId
+      },(err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
         subscribe()
       });
 
     const subscribe = () =>
-      firstSubscribe ((err, res) => {
+      firstSubscribe ({
+        projectId: projectId,
+        deviceId: deviceId
+      }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
         res.text.should.equal('succeeded')
@@ -170,7 +174,12 @@ describe('app', function () {
 
     const callback = () =>
       fcmPush({
-
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId, oauthClientId2],
+        userId: [1, 2, 3],
+        payload: { notification: { title: 'xxx' } },
       }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
@@ -199,22 +208,33 @@ describe('app', function () {
     const projectId = 'firebase-pi'
 
     const setup = () =>
-      setupProject((err, res) => {
+      setupProject({
+        projectId: projectId
+      },(err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
         subscribe()
       });
 
     const subscribe = () =>
-      firstSubscribe ((err, res) => {
+      firstSubscribe ({
+        projectId: projectId,
+        deviceId: deviceId
+      }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
         res.text.should.equal('succeeded')
         callback();
-      });
+      })
+
     const callback = () =>
       fcmPush({
-        
+        url: "/tinhte/fcm-push",
+        adminUsername: adminUsername,
+        adminPassword: adminPassword,
+        cliendId: [oauthClientId],
+        userId: [1, 2, 3],
+        payload: { notification: { title: 'xxx' } },
       }, (err, res) => {
         expect(err).to.be.null
         res.should.have.status(202)
